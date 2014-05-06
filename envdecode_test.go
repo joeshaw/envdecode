@@ -30,6 +30,8 @@ type testConfig struct {
 
 	Nested    nested
 	NestedPtr *nested
+
+	Default int `env:"TEST_UNSET,asdf=asdf,default=1234"`
 }
 
 func TestDecode(t *testing.T) {
@@ -99,6 +101,10 @@ func TestDecode(t *testing.T) {
 	if tc.NestedPtr.String != "foo" {
 		t.Fatalf(`Expected "foo", got "%s"`, tc.NestedPtr.String)
 	}
+
+	if tc.Default != 1234 {
+		t.Fatalf("Expected 1234, got %d", tc.Default)
+	}
 }
 
 func TestDecodeErrors(t *testing.T) {
@@ -119,4 +125,33 @@ func TestDecodeErrors(t *testing.T) {
 	if err != ErrInvalidTarget {
 		t.Fatal("Should have gotten an error decoding to a nil pointer")
 	}
+}
+
+func ExampleDecode() {
+	type Example struct {
+		// A string field, without any default
+		String string `env:"EXAMPLE_STRING"`
+
+		// A uint16 field, with a default value of 100
+		Uint16 uint16 `env:"EXAMPLE_UINT16,default=100"`
+	}
+
+	os.Setenv("EXAMPLE_STRING", "an example!")
+
+	var e Example
+	err := Decode(&e)
+	if err != nil {
+		panic(err)
+	}
+
+	// If TEST_STRING is set, e.String will contain its value
+	fmt.Println(e.String)
+
+	// If TEST_UINT16 is set, e.Uint16 will contain its value.
+	// Otherwise, it will contain the default value, 100.
+	fmt.Println(e.Uint16)
+
+	// Output:
+	// an example!
+	// 100
 }

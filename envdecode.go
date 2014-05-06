@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // ErrInvalidTarget indicates that the target value passed to
@@ -16,7 +17,8 @@ var ErrInvalidTarget = errors.New("target must be non-nil pointer to struct")
 // Decode environment variables into the provided target.  The target
 // must be a non-nil pointer to a struct.  Fields in the struct must
 // be exported, and tagged with an "env" struct tag with a value
-// containing the name of the environment variable.
+// containing the name of the environment variable.  Default values
+// may be provided by appending ",default=value" to the struct tag.
 func Decode(target interface{}) error {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {
@@ -55,7 +57,17 @@ func Decode(target interface{}) error {
 			continue
 		}
 
-		env := os.Getenv(tag)
+		parts := strings.Split(tag, ",")
+		env := os.Getenv(parts[0])
+		if env == "" {
+			for _, o := range parts[1:] {
+				if strings.HasPrefix(o, "default=") {
+					env = o[8:]
+					break
+				}
+			}
+		}
+
 		if env == "" {
 			continue
 		}
