@@ -14,8 +14,8 @@ Define a struct with `env` struct tags:
 
 ```go
 type Config struct {
-    Hostname  string `env:"SERVER_HOSTNAME"`
-    Port      uint16 `env:"SERVER_PORT"`
+    Hostname  string `env:"SERVER_HOSTNAME,default=localhost"`
+    Port      uint16 `env:"SERVER_PORT,default=8080"`
 
     AWS struct {
         ID     string `env:"AWS_ACCESS_KEY_ID"`
