@@ -19,7 +19,7 @@ type Config struct {
 
     AWS struct {
         ID     string `env:"AWS_ACCESS_KEY_ID"`
-        Secret string `env:"AWS_SECRET_ACCESS_KEY"`
+        Secret string `env:"AWS_SECRET_ACCESS_KEY,required"`
     }
 }
 ```

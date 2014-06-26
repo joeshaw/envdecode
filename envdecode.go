@@ -1,9 +1,11 @@
-// envdecode is a package for populating structs from environment
+// Package envdecode is a package for populating structs from environment
 // variables, using struct tags.
 package envdecode
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"strconv"
@@ -13,6 +15,16 @@ import (
 // ErrInvalidTarget indicates that the target value passed to
 // Decode is invalid.  Target must be a non-nil pointer to a struct.
 var ErrInvalidTarget = errors.New("target must be non-nil pointer to struct")
+
+// FailureFunc is called when an error is encountered during a MustDecode
+// operation. It prints the error and terminates the process.
+//
+// This variable can be assigned to another function of the user-programmer's
+// design, allowing for graceful recovery of the problem, such as loading
+// from a backup configuration file.
+var FailureFunc = func(err error) {
+	log.Fatalf("envdecode: an error was encountered while decoding: %v\n", err)
+}
 
 // Decode environment variables into the provided target.  The target
 // must be a non-nil pointer to a struct.  Fields in the struct must
@@ -59,13 +71,29 @@ func Decode(target interface{}) error {
 
 		parts := strings.Split(tag, ",")
 		env := os.Getenv(parts[0])
-		if env == "" {
-			for _, o := range parts[1:] {
-				if strings.HasPrefix(o, "default=") {
-					env = o[8:]
-					break
-				}
+
+		required := false
+		hasDefault := false
+		defaultValue := ""
+
+		for _, o := range parts[1:] {
+			if !required {
+				required = strings.HasPrefix(o, "required")
 			}
+			if strings.HasPrefix(o, "default=") {
+				hasDefault = true
+				defaultValue = o[8:]
+			}
+		}
+
+		if required && hasDefault {
+			panic(`"default" and "required" may not be specified in the same annotation`)
+		}
+		if env == "" && required {
+			return fmt.Errorf("the environment variable \"%s\" is missing", parts[0])
+		}
+		if env == "" {
+			env = defaultValue
 		}
 
 		if env == "" {
@@ -106,4 +134,13 @@ func Decode(target interface{}) error {
 	}
 
 	return nil
+}
+
+// MustDecode calls Decode and terminates the process if any errors
+// are encountered.
+func MustDecode(target interface{}) {
+	err := Decode(target)
+	if err != nil {
+		FailureFunc(err)
+	}
 }

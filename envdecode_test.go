@@ -34,6 +34,13 @@ type testConfig struct {
 	Default int `env:"TEST_UNSET,asdf=asdf,default=1234"`
 }
 
+type testConfigRequired struct {
+	Required string `env:"TEST_REQUIRED,required"`
+}
+type testConfigRequiredDefault struct {
+	RequiredDefault string `env:"TEST_REQUIRED_DEFAULT,required,default=test"`
+}
+
 func TestDecode(t *testing.T) {
 	os.Setenv("TEST_STRING", "foo")
 	os.Setenv("TEST_INT64", fmt.Sprintf("%d", -(1<<50)))
@@ -105,6 +112,19 @@ func TestDecode(t *testing.T) {
 	if tc.Default != 1234 {
 		t.Fatalf("Expected 1234, got %d", tc.Default)
 	}
+
+	os.Setenv("TEST_REQUIRED", "required")
+	var tcr testConfigRequired
+
+	err = Decode(&tcr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tcr.Required != "required" {
+		t.Fatalf("Expected \"required\", got %s", tcr.Required)
+	}
+
 }
 
 func TestDecodeErrors(t *testing.T) {
@@ -125,6 +145,30 @@ func TestDecodeErrors(t *testing.T) {
 	if err != ErrInvalidTarget {
 		t.Fatal("Should have gotten an error decoding to a nil pointer")
 	}
+
+	var tcr testConfigRequired
+	os.Clearenv()
+	err = Decode(&tcr)
+	if err == nil {
+		t.Fatal("An error was expected but recieved:", err)
+	}
+
+	missing := false
+	FailureFunc = func(err error) {
+		missing = true
+	}
+	MustDecode(&tcr)
+	if !missing {
+		t.Fatal("The FailureFunc should have been called but it was not")
+	}
+
+	var tcrd testConfigRequiredDefault
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+	err = Decode(&tcrd)
+	t.Fatal("This should not have been reached. A panic should have occured.")
 }
 
 func ExampleDecode() {
