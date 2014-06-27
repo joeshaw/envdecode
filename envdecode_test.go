@@ -45,6 +45,13 @@ type testConfigRequired struct {
 type testConfigRequiredDefault struct {
 	RequiredDefault string `env:"TEST_REQUIRED_DEFAULT,required,default=test"`
 }
+type testNoExportedFields struct {
+	aString  string  `env:"TEST_STRING"`
+	anInt64  int64   `env:"TEST_INT64"`
+	aUint16  uint16  `env:"TEST_UINT16"`
+	aFloat64 float64 `env:"TEST_FLOAT64"`
+	aBool    bool    `env:"TEST_BOOL"`
+}
 
 type testNoExportedFields struct {
 	aString  string  `env:"TEST_STRING"`
