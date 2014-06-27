@@ -24,6 +24,8 @@ type Config struct {
 }
 ```
 
+  * Fields must be exported (i.e. begin with a capital letter) in order for `envdecode` to work with them.
+
 Then call `envdecode.Decode`:
 
 ```go
