@@ -50,3 +50,4 @@ err := envdecode.Decode(&cfg)
 * `uint`, `uint8`, `uint16`, `uint32`, `uint64`
 * `string`
 * `time.Duration`, using the [`time.ParseDuration()` format](http://golang.org/pkg/time/#ParseDuration)
+* `*url.URL`, using [`url.Parse()`](https://godoc.org/net/url#Parse)
