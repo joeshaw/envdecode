@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrInvalidTarget indicates that the target value passed to
@@ -115,12 +116,18 @@ func Decode(target interface{}) error {
 			}
 
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			bits := f.Type().Bits()
-			v, err := strconv.ParseInt(env, 0, bits)
-			if err == nil {
-				f.SetInt(v)
+			if t := f.Type(); t.PkgPath() == "time" && t.Name() == "Duration" {
+				v, err := time.ParseDuration(env)
+				if err == nil {
+					f.SetInt(int64(v))
+				}
+			} else {
+				bits := f.Type().Bits()
+				v, err := strconv.ParseInt(env, 0, bits)
+				if err == nil {
+					f.SetInt(v)
+				}
 			}
-
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			bits := f.Type().Bits()
 			v, err := strconv.ParseUint(env, 0, bits)

@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"testing"
+	"time"
 )
 
 type nested struct {
@@ -12,14 +13,16 @@ type nested struct {
 }
 
 type testConfig struct {
-	String  string  `env:"TEST_STRING"`
-	Int64   int64   `env:"TEST_INT64"`
-	Uint16  uint16  `env:"TEST_UINT16"`
-	Float64 float64 `env:"TEST_FLOAT64"`
-	Bool    bool    `env:"TEST_BOOL"`
+	String   string        `env:"TEST_STRING"`
+	Int64    int64         `env:"TEST_INT64"`
+	Uint16   uint16        `env:"TEST_UINT16"`
+	Float64  float64       `env:"TEST_FLOAT64"`
+	Bool     bool          `env:"TEST_BOOL"`
+	Duration time.Duration `env:"TEST_DURATION"`
 
-	UnsetString string `env:"TEST_UNSET_STRING"`
-	UnsetInt64  int64  `env:"TEST_UNSET_INT64"`
+	UnsetString   string        `env:"TEST_UNSET_STRING"`
+	UnsetInt64    int64         `env:"TEST_UNSET_INT64"`
+	UnsetDuration time.Duration `env:"TEST_UNSET_DURATION"`
 
 	InvalidInt64 int64 `env:"TEST_INVALID_INT64"`
 
@@ -31,7 +34,8 @@ type testConfig struct {
 	Nested    nested
 	NestedPtr *nested
 
-	Default int `env:"TEST_UNSET,asdf=asdf,default=1234"`
+	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
+	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
 }
 
 type testConfigRequired struct {
@@ -47,6 +51,7 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_UINT16", "60000")
 	os.Setenv("TEST_FLOAT64", fmt.Sprintf("%.48f", math.Pi))
 	os.Setenv("TEST_BOOL", "true")
+	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_INVALID_INT64", "asdf")
 
 	var tc testConfig
@@ -77,12 +82,21 @@ func TestDecode(t *testing.T) {
 		t.Fatal("Expected true, got false")
 	}
 
+	duration, _ := time.ParseDuration("10m")
+	if tc.Duration != duration {
+		t.Fatalf("Expected %d, got %d", duration, tc.Duration)
+	}
+
 	if tc.UnsetString != "" {
 		t.Fatal("Got non-empty string unexpectedly")
 	}
 
 	if tc.UnsetInt64 != 0 {
 		t.Fatal("Got non-zero int unexpectedly")
+	}
+
+	if tc.UnsetDuration != time.Duration(0) {
+		t.Fatal("Got non-zero time.Duration unexpectedly")
 	}
 
 	if tc.InvalidInt64 != 0 {
@@ -109,8 +123,13 @@ func TestDecode(t *testing.T) {
 		t.Fatalf(`Expected "foo", got "%s"`, tc.NestedPtr.String)
 	}
 
-	if tc.Default != 1234 {
-		t.Fatalf("Expected 1234, got %d", tc.Default)
+	if tc.DefaultInt != 1234 {
+		t.Fatalf("Expected 1234, got %d", tc.DefaultInt)
+	}
+
+	defaultDuration, _ := time.ParseDuration("24h")
+	if tc.DefaultDuration != defaultDuration {
+		t.Fatalf("Expected %d, got %d", defaultDuration, tc.DefaultInt)
 	}
 
 	os.Setenv("TEST_REQUIRED", "required")
