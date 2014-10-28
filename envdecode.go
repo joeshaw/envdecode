@@ -30,8 +30,20 @@ var FailureFunc = func(err error) {
 // Decode environment variables into the provided target.  The target
 // must be a non-nil pointer to a struct.  Fields in the struct must
 // be exported, and tagged with an "env" struct tag with a value
-// containing the name of the environment variable.  Default values
-// may be provided by appending ",default=value" to the struct tag.
+// containing the name of the environment variable.  An error is
+// returned if there are no exported members tagged.
+//
+// Default values may be provided by appending ",default=value" to the
+// struct tag.  Required values may be marked by appending ",required"
+// to the struct tag.  It is an error to provide both "default" and
+// "required".
+//
+// All primitive types are supported, including bool, floating point,
+// signed and unsigned integers, and string.  Boolean and numeric
+// types are decoded using the standard strconv Parse functions for
+// those types.  Structs and pointers to structs are decoded
+// recursively.  time.Duration is also supported via the
+// time.ParseDuration() function.
 func Decode(target interface{}) error {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {

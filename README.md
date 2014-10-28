@@ -10,6 +10,9 @@ nested structs, but it will not allocate new pointers to structs.
 
 ## API ##
 
+Full API docs are available on
+[godoc.org](http://godoc.org/github.com/joeshaw/envdecode).
+
 Define a struct with `env` struct tags:
 
 ```go
@@ -21,10 +24,15 @@ type Config struct {
         ID     string `env:"AWS_ACCESS_KEY_ID"`
         Secret string `env:"AWS_SECRET_ACCESS_KEY,required"`
     }
+
+    Timeout time.Duration `env:"TIMEOUT,default=1m"`
 }
 ```
 
-  * Fields must be exported (i.e. begin with a capital letter) in order for `envdecode` to work with them.
+Fields *must be exported* (i.e. begin with a capital letter) in order
+for `envdecode` to work with them.  An error will be returned if a
+struct with no exported fields is decoded (including one that contains
+no `env` tags at all).
 
 Then call `envdecode.Decode`:
 
@@ -32,3 +40,13 @@ Then call `envdecode.Decode`:
 var cfg Config
 err := envdecode.Decode(&cfg)
 ```
+
+## Supported types ##
+
+* Structs (and pointer to structs)
+* `bool`
+* `float32`, `float64`
+* `int`, `int8`, `int16`, `int32`, `int64`
+* `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+* `string`
+* `time.Duration`, using the [`time.ParseDuration()` format](http://golang.org/pkg/time/#ParseDuration)
