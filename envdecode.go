@@ -14,7 +14,7 @@ import (
 
 // ErrInvalidTarget indicates that the target value passed to
 // Decode is invalid.  Target must be a non-nil pointer to a struct.
-var ErrInvalidTarget = errors.New("target must be non-nil pointer to struct")
+var ErrInvalidTarget = errors.New("target must be non-nil pointer to struct that has at least one exported field with a valid env tag.")
 
 // FailureFunc is called when an error is encountered during a MustDecode
 // operation. It prints the error and terminates the process.
@@ -43,6 +43,7 @@ func Decode(target interface{}) error {
 	}
 
 	t := s.Type()
+	setFieldCount := 0
 	for i := 0; i < s.NumField(); i++ {
 		f := s.Field(i)
 
@@ -87,7 +88,7 @@ func Decode(target interface{}) error {
 		}
 
 		if required && hasDefault {
-			panic(`"default" and "required" may not be specified in the same annotation`)
+			panic(`envdecode: "default" and "required" may not be specified in the same annotation`)
 		}
 		if env == "" && required {
 			return fmt.Errorf("the environment variable \"%s\" is missing", parts[0])
@@ -99,6 +100,8 @@ func Decode(target interface{}) error {
 		if env == "" {
 			continue
 		}
+
+		setFieldCount++
 
 		switch f.Kind() {
 		case reflect.Bool:
@@ -131,6 +134,12 @@ func Decode(target interface{}) error {
 		case reflect.String:
 			f.SetString(env)
 		}
+	}
+
+	// if we didn't do anything - the user probably did something
+	// wrong like leave all fields unexported.
+	if setFieldCount == 0 {
+		return ErrInvalidTarget
 	}
 
 	return nil
