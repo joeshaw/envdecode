@@ -37,15 +37,21 @@ type testConfig struct {
 type testConfigRequired struct {
 	Required string `env:"TEST_REQUIRED,required"`
 }
+
 type testConfigRequiredDefault struct {
 	RequiredDefault string `env:"TEST_REQUIRED_DEFAULT,required,default=test"`
 }
+
 type testNoExportedFields struct {
 	aString  string  `env:"TEST_STRING"`
 	anInt64  int64   `env:"TEST_INT64"`
 	aUint16  uint16  `env:"TEST_UINT16"`
 	aFloat64 float64 `env:"TEST_FLOAT64"`
 	aBool    bool    `env:"TEST_BOOL"`
+}
+
+type testNoTags struct {
+	String string
 }
 
 func TestDecode(t *testing.T) {
@@ -151,6 +157,12 @@ func TestDecodeErrors(t *testing.T) {
 	err = Decode(tcp)
 	if err != ErrInvalidTarget {
 		t.Fatal("Should have gotten an error decoding to a nil pointer")
+	}
+
+	var tnt testNoTags
+	err = Decode(&tnt)
+	if err != ErrInvalidTarget {
+		t.Fatal("Should have gotten an error decoding a struct with no tags")
 	}
 
 	var tcni testNoExportedFields
