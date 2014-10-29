@@ -3,6 +3,7 @@ package envdecode
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -19,10 +20,12 @@ type testConfig struct {
 	Float64  float64       `env:"TEST_FLOAT64"`
 	Bool     bool          `env:"TEST_BOOL"`
 	Duration time.Duration `env:"TEST_DURATION"`
+	URL      *url.URL      `env:"TEST_URL"`
 
 	UnsetString   string        `env:"TEST_UNSET_STRING"`
 	UnsetInt64    int64         `env:"TEST_UNSET_INT64"`
 	UnsetDuration time.Duration `env:"TEST_UNSET_DURATION"`
+	UnsetURL      *url.URL      `env:"TEST_UNSET_URL"`
 
 	InvalidInt64 int64 `env:"TEST_INVALID_INT64"`
 
@@ -36,6 +39,7 @@ type testConfig struct {
 
 	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
 	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
+	DefaultURL      *url.URL      `env:"TEST_UNSET,default=http://example.com"`
 }
 
 type testConfigRequired struct {
@@ -65,6 +69,7 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_FLOAT64", fmt.Sprintf("%.48f", math.Pi))
 	os.Setenv("TEST_BOOL", "true")
 	os.Setenv("TEST_DURATION", "10m")
+	os.Setenv("TEST_URL", "https://example.com")
 	os.Setenv("TEST_INVALID_INT64", "asdf")
 
 	var tc testConfig
@@ -100,6 +105,12 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Expected %d, got %d", duration, tc.Duration)
 	}
 
+	if tc.URL == nil {
+		t.Fatalf("Expected https://example.com, got nil")
+	} else if tc.URL.String() != "https://example.com" {
+		t.Fatalf("Expected https://example.com, got %s", tc.URL.String())
+	}
+
 	if tc.UnsetString != "" {
 		t.Fatal("Got non-empty string unexpectedly")
 	}
@@ -110,6 +121,10 @@ func TestDecode(t *testing.T) {
 
 	if tc.UnsetDuration != time.Duration(0) {
 		t.Fatal("Got non-zero time.Duration unexpectedly")
+	}
+
+	if tc.UnsetURL != nil {
+		t.Fatal("Got non-zero *url.URL unexpectedly")
 	}
 
 	if tc.InvalidInt64 != 0 {
@@ -143,6 +158,10 @@ func TestDecode(t *testing.T) {
 	defaultDuration, _ := time.ParseDuration("24h")
 	if tc.DefaultDuration != defaultDuration {
 		t.Fatalf("Expected %d, got %d", defaultDuration, tc.DefaultInt)
+	}
+
+	if tc.DefaultURL.String() != "http://example.com" {
+		t.Fatalf("Expected http://example.com, got %s", tc.DefaultURL.String())
 	}
 
 	os.Setenv("TEST_REQUIRED", "required")
