@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -42,8 +43,9 @@ var FailureFunc = func(err error) {
 // signed and unsigned integers, and string.  Boolean and numeric
 // types are decoded using the standard strconv Parse functions for
 // those types.  Structs and pointers to structs are decoded
-// recursively.  time.Duration is also supported via the
-// time.ParseDuration() function.
+// recursively.  time.Duration is supported via the
+// time.ParseDuration() function and *url.URL is supported via the
+// url.Parse() function.
 func Decode(target interface{}) error {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {
@@ -152,6 +154,14 @@ func Decode(target interface{}) error {
 
 		case reflect.String:
 			f.SetString(env)
+
+		case reflect.Ptr:
+			if t := f.Type().Elem(); t.Kind() == reflect.Struct && t.PkgPath() == "net/url" && t.Name() == "URL" {
+				v, err := url.Parse(env)
+				if err == nil {
+					f.Set(reflect.ValueOf(v))
+				}
+			}
 		}
 	}
 
