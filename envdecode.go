@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -181,4 +182,126 @@ func MustDecode(target interface{}) {
 	if err != nil {
 		FailureFunc(err)
 	}
+}
+
+//// Configuration info for Export
+
+type ConfigInfo struct {
+	Field        string
+	EnvVar       string
+	Value        string
+	DefaultValue string
+	HasDefault   bool
+	Required     bool
+	UsesEnv      bool
+}
+
+type ConfigInfoSlice []*ConfigInfo
+
+func (c ConfigInfoSlice) Less(i, j int) bool {
+	return c[i].EnvVar < c[j].EnvVar
+}
+func (c ConfigInfoSlice) Len() int {
+	return len(c)
+}
+func (c ConfigInfoSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+// Returns a list of final configuration metadata sorted by envvar name
+func Export(target interface{}) ([]*ConfigInfo, error) {
+	s := reflect.ValueOf(target)
+	if s.Kind() != reflect.Ptr || s.IsNil() {
+		return nil, ErrInvalidTarget
+	}
+
+	cfg := []*ConfigInfo{}
+
+	s = s.Elem()
+	if s.Kind() != reflect.Struct {
+		return nil, ErrInvalidTarget
+	}
+
+	t := s.Type()
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		fName := t.Field(i).Name
+
+		fElem := f
+		if f.Kind() == reflect.Ptr {
+			fElem = f.Elem()
+		}
+		if fElem.Kind() == reflect.Struct {
+			ss := fElem.Addr().Interface()
+			subCfg, err := Export(ss)
+			if err != ErrInvalidTarget {
+				f = fElem
+				for _, v := range subCfg {
+					v.Field = fmt.Sprintf("%s.%s", fName, v.Field)
+					cfg = append(cfg, v)
+				}
+			}
+		}
+
+		tag := t.Field(i).Tag.Get("env")
+		if tag == "" {
+			continue
+		}
+
+		parts := strings.Split(tag, ",")
+
+		ci := &ConfigInfo{
+			Field:   fName,
+			EnvVar:  parts[0],
+			UsesEnv: os.Getenv(parts[0]) != "",
+		}
+
+		for _, o := range parts[1:] {
+			if strings.HasPrefix(o, "default=") {
+				ci.HasDefault = true
+				ci.DefaultValue = o[8:]
+			} else if strings.HasPrefix(o, "required") {
+				ci.Required = true
+			}
+		}
+
+		if f.Kind() == reflect.Ptr && f.IsNil() {
+			ci.Value = ""
+		} else if stringer, ok := f.Interface().(fmt.Stringer); ok {
+			ci.Value = stringer.String()
+		} else {
+			switch f.Kind() {
+			case reflect.Bool:
+				ci.Value = strconv.FormatBool(f.Bool())
+
+			case reflect.Float32, reflect.Float64:
+				bits := f.Type().Bits()
+				ci.Value = strconv.FormatFloat(f.Float(), 'f', -1, bits)
+
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				ci.Value = strconv.FormatInt(f.Int(), 10)
+
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				ci.Value = strconv.FormatUint(f.Uint(), 10)
+
+			case reflect.String:
+				ci.Value = f.String()
+
+			default:
+				// Unable to determine string format for value
+				return nil, ErrInvalidTarget
+			}
+		}
+
+		cfg = append(cfg, ci)
+	}
+
+	// No configuration tags found, assume invalid input
+	if len(cfg) == 0 {
+		return nil, ErrInvalidTarget
+	}
+
+	sort.Sort(ConfigInfoSlice(cfg))
+
+	return cfg, nil
 }

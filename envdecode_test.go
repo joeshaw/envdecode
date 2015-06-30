@@ -5,6 +5,8 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"sort"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -176,6 +178,10 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Expected \"required\", got %s", tcr.Required)
 	}
 
+	_, err = Export(&tcr)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDecodeErrors(t *testing.T) {
@@ -261,4 +267,247 @@ func ExampleDecode() {
 	// Output:
 	// an example!
 	// 100
+}
+
+//// Export tests
+
+type testConfigExport struct {
+	String   string        `env:"TEST_STRING"`
+	Int64    int64         `env:"TEST_INT64"`
+	Uint16   uint16        `env:"TEST_UINT16"`
+	Float64  float64       `env:"TEST_FLOAT64"`
+	Bool     bool          `env:"TEST_BOOL"`
+	Duration time.Duration `env:"TEST_DURATION"`
+	URL      *url.URL      `env:"TEST_URL"`
+
+	UnsetString   string        `env:"TEST_UNSET_STRING"`
+	UnsetInt64    int64         `env:"TEST_UNSET_INT64"`
+	UnsetDuration time.Duration `env:"TEST_UNSET_DURATION"`
+	UnsetURL      *url.URL      `env:"TEST_UNSET_URL"`
+
+	UnusedField     string
+	unexportedField string
+
+	IgnoredPtr *bool `env:"TEST_IGNORED_POINTER"`
+
+	Nested         nestedConfigExport
+	NestedPtr      *nestedConfigExportPointer
+	NestedPtrUnset *nestedConfigExportPointer
+
+	NestedTwice nestedTwiceConfig
+
+	NoConfig       noConfig
+	NoConfigPtr    *noConfig
+	NoConfigPtrSet *noConfig
+
+	RequiredInt int `env:"TEST_REQUIRED_INT,required"`
+
+	DefaultBool     bool          `env:"TEST_DEFAULT_BOOL,default=true"`
+	DefaultInt      int           `env:"TEST_DEFAULT_INT,default=1234"`
+	DefaultDuration time.Duration `env:"TEST_DEFAULT_DURATION,default=24h"`
+	DefaultURL      *url.URL      `env:"TEST_DEFAULT_URL,default=http://example.com"`
+	DefaultIntSet   int           `env:"TEST_DEFAULT_INT_SET,default=99"`
+}
+
+type nestedConfigExport struct {
+	String string `env:"TEST_NESTED_STRING"`
+}
+
+type nestedConfigExportPointer struct {
+	String string `env:"TEST_NESTED_STRING_POINTER"`
+}
+
+type noConfig struct {
+	Int int
+}
+
+type nestedTwiceConfig struct {
+	Nested nestedConfigInner
+}
+
+type nestedConfigInner struct {
+	String string `env:"TEST_NESTED_TWICE_STRING"`
+}
+
+func TestExport(t *testing.T) {
+	testFloat64 := fmt.Sprintf("%.48f", math.Pi)
+	testFloat64Output := strconv.FormatFloat(math.Pi, 'f', -1, 64)
+	testInt64 := fmt.Sprintf("%d", -(1 << 50))
+
+	os.Setenv("TEST_STRING", "foo")
+	os.Setenv("TEST_INT64", testInt64)
+	os.Setenv("TEST_UINT16", "60000")
+	os.Setenv("TEST_FLOAT64", testFloat64)
+	os.Setenv("TEST_BOOL", "true")
+	os.Setenv("TEST_DURATION", "10m")
+	os.Setenv("TEST_URL", "https://example.com")
+	os.Setenv("TEST_NESTED_STRING", "nest_foo")
+	os.Setenv("TEST_NESTED_STRING_POINTER", "nest_foo_ptr")
+	os.Setenv("TEST_NESTED_TWICE_STRING", "nest_twice_foo")
+	os.Setenv("TEST_REQUIRED_INT", "101")
+	os.Setenv("TEST_DEFAULT_INT_SET", "102")
+
+	var tc testConfigExport
+	tc.NestedPtr = &nestedConfigExportPointer{}
+	tc.NoConfigPtrSet = &noConfig{}
+
+	err := Decode(&tc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rc, err := Export(&tc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []*ConfigInfo{
+		&ConfigInfo{
+			Field:   "String",
+			EnvVar:  "TEST_STRING",
+			Value:   "foo",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "Int64",
+			EnvVar:  "TEST_INT64",
+			Value:   testInt64,
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "Uint16",
+			EnvVar:  "TEST_UINT16",
+			Value:   "60000",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "Float64",
+			EnvVar:  "TEST_FLOAT64",
+			Value:   testFloat64Output,
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "Bool",
+			EnvVar:  "TEST_BOOL",
+			Value:   "true",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "Duration",
+			EnvVar:  "TEST_DURATION",
+			Value:   "10m0s",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "URL",
+			EnvVar:  "TEST_URL",
+			Value:   "https://example.com",
+			UsesEnv: true,
+		},
+
+		&ConfigInfo{
+			Field:  "UnsetString",
+			EnvVar: "TEST_UNSET_STRING",
+			Value:  "",
+		},
+		&ConfigInfo{
+			Field:  "UnsetInt64",
+			EnvVar: "TEST_UNSET_INT64",
+			Value:  "0",
+		},
+		&ConfigInfo{
+			Field:  "UnsetDuration",
+			EnvVar: "TEST_UNSET_DURATION",
+			Value:  "0",
+		},
+		&ConfigInfo{
+			Field:  "UnsetURL",
+			EnvVar: "TEST_UNSET_URL",
+			Value:  "",
+		},
+
+		&ConfigInfo{
+			Field:  "IgnoredPtr",
+			EnvVar: "TEST_IGNORED_POINTER",
+			Value:  "",
+		},
+
+		&ConfigInfo{
+			Field:   "Nested.String",
+			EnvVar:  "TEST_NESTED_STRING",
+			Value:   "nest_foo",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "NestedPtr.String",
+			EnvVar:  "TEST_NESTED_STRING_POINTER",
+			Value:   "nest_foo_ptr",
+			UsesEnv: true,
+		},
+
+		&ConfigInfo{
+			Field:   "NestedTwice.Nested.String",
+			EnvVar:  "TEST_NESTED_TWICE_STRING",
+			Value:   "nest_twice_foo",
+			UsesEnv: true,
+		},
+
+		&ConfigInfo{
+			Field:    "RequiredInt",
+			EnvVar:   "TEST_REQUIRED_INT",
+			Value:    "101",
+			UsesEnv:  true,
+			Required: true,
+		},
+
+		&ConfigInfo{
+			Field:        "DefaultBool",
+			EnvVar:       "TEST_DEFAULT_BOOL",
+			Value:        "true",
+			DefaultValue: "true",
+			HasDefault:   true,
+		},
+		&ConfigInfo{
+			Field:        "DefaultInt",
+			EnvVar:       "TEST_DEFAULT_INT",
+			Value:        "1234",
+			DefaultValue: "1234",
+			HasDefault:   true,
+		},
+		&ConfigInfo{
+			Field:        "DefaultDuration",
+			EnvVar:       "TEST_DEFAULT_DURATION",
+			Value:        "24h0m0s",
+			DefaultValue: "24h",
+			HasDefault:   true,
+		},
+		&ConfigInfo{
+			Field:        "DefaultURL",
+			EnvVar:       "TEST_DEFAULT_URL",
+			Value:        "http://example.com",
+			DefaultValue: "http://example.com",
+			HasDefault:   true,
+		},
+		&ConfigInfo{
+			Field:        "DefaultIntSet",
+			EnvVar:       "TEST_DEFAULT_INT_SET",
+			Value:        "102",
+			DefaultValue: "99",
+			HasDefault:   true,
+			UsesEnv:      true,
+		},
+	}
+
+	sort.Sort(ConfigInfoSlice(expected))
+
+	if len(rc) != len(expected) {
+		t.Fatalf("Have %d results, expected %d", len(rc), len(expected))
+	}
+
+	for n, v := range rc {
+		ci := expected[n]
+		if *ci != *v {
+			t.Fatalf("have %+v, expected %+v", v, ci)
+		}
+	}
 }
