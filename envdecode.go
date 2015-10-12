@@ -48,14 +48,29 @@ var FailureFunc = func(err error) {
 // time.ParseDuration() function and *url.URL is supported via the
 // url.Parse() function.
 func Decode(target interface{}) error {
+	nFields, err := decode(target)
+	if err != nil {
+		return err
+	}
+
+	// if we didn't do anything - the user probably did something
+	// wrong like leave all fields unexported.
+	if nFields == 0 {
+		return ErrInvalidTarget
+	}
+
+	return nil
+}
+
+func decode(target interface{}) (int, error) {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {
-		return ErrInvalidTarget
+		return 0, ErrInvalidTarget
 	}
 
 	s = s.Elem()
 	if s.Kind() != reflect.Struct {
-		return ErrInvalidTarget
+		return 0, ErrInvalidTarget
 	}
 
 	t := s.Type()
@@ -74,7 +89,11 @@ func Decode(target interface{}) error {
 
 		case reflect.Struct:
 			ss := f.Addr().Interface()
-			Decode(ss)
+			n, err := decode(ss)
+			if err != nil {
+				return 0, err
+			}
+			setFieldCount += n
 		}
 
 		if !f.CanSet() {
@@ -107,7 +126,7 @@ func Decode(target interface{}) error {
 			panic(`envdecode: "default" and "required" may not be specified in the same annotation`)
 		}
 		if env == "" && required {
-			return fmt.Errorf("the environment variable \"%s\" is missing", parts[0])
+			return 0, fmt.Errorf("the environment variable \"%s\" is missing", parts[0])
 		}
 		if env == "" {
 			env = defaultValue
@@ -166,13 +185,7 @@ func Decode(target interface{}) error {
 		}
 	}
 
-	// if we didn't do anything - the user probably did something
-	// wrong like leave all fields unexported.
-	if setFieldCount == 0 {
-		return ErrInvalidTarget
-	}
-
-	return nil
+	return setFieldCount, nil
 }
 
 // MustDecode calls Decode and terminates the process if any errors

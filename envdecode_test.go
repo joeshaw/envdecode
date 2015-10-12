@@ -240,6 +240,38 @@ func TestDecodeErrors(t *testing.T) {
 	t.Fatal("This should not have been reached. A panic should have occured.")
 }
 
+func TestOnlyNested(t *testing.T) {
+	os.Setenv("TEST_STRING", "foo")
+
+	// No env vars in the outer level are ok, as long as they're
+	// in the inner struct.
+	var o struct {
+		Inner nested
+	}
+	if err := Decode(&o); err != nil {
+		t.Fatalf("Expected no error, got %s", err)
+	}
+
+	// No env vars in the inner levels are ok, as long as they're
+	// in the outer struct.
+	var o2 struct {
+		Inner noConfig
+		X     string `env:"TEST_STRING"`
+	}
+	if err := Decode(&o2); err != nil {
+		t.Fatalf("Expected no error, got %s", err)
+	}
+
+	// No env vars in either outer or inner levels should result
+	// in error
+	var o3 struct {
+		Inner noConfig
+	}
+	if err := Decode(&o3); err != ErrInvalidTarget {
+		t.Fatal("Expected ErrInvalidTarget, got %s", err)
+	}
+}
+
 func ExampleDecode() {
 	type Example struct {
 		// A string field, without any default
