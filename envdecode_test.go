@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"testing"
@@ -24,10 +25,19 @@ type testConfig struct {
 	Duration time.Duration `env:"TEST_DURATION"`
 	URL      *url.URL      `env:"TEST_URL"`
 
+	StringSlice   []string        `env:"TEST_STRING_SLICE"`
+	Int64Slice    []int64         `env:"TEST_INT64_SLICE"`
+	Uint16Slice   []uint16        `env:"TEST_UINT16_SLICE"`
+	Float64Slice  []float64       `env:"TEST_FLOAT64_SLICE"`
+	BoolSlice     []bool          `env:"TEST_BOOL_SLICE"`
+	DurationSlice []time.Duration `env:"TEST_DURATION_SLICE"`
+	URLSlice      []*url.URL      `env:"TEST_URL_SLICE"`
+
 	UnsetString   string        `env:"TEST_UNSET_STRING"`
 	UnsetInt64    int64         `env:"TEST_UNSET_INT64"`
 	UnsetDuration time.Duration `env:"TEST_UNSET_DURATION"`
 	UnsetURL      *url.URL      `env:"TEST_UNSET_URL"`
+	UnsetSlice    []string      `env:"TEST_UNSET_SLICE"`
 
 	InvalidInt64 int64 `env:"TEST_INVALID_INT64"`
 
@@ -65,14 +75,25 @@ type testNoTags struct {
 }
 
 func TestDecode(t *testing.T) {
+	int64Val := int64(-(1 << 50))
+	int64AsString := fmt.Sprintf("%d", int64Val)
+	piAsString := fmt.Sprintf("%.48f", math.Pi)
+
 	os.Setenv("TEST_STRING", "foo")
-	os.Setenv("TEST_INT64", fmt.Sprintf("%d", -(1<<50)))
+	os.Setenv("TEST_INT64", int64AsString)
 	os.Setenv("TEST_UINT16", "60000")
-	os.Setenv("TEST_FLOAT64", fmt.Sprintf("%.48f", math.Pi))
+	os.Setenv("TEST_FLOAT64", piAsString)
 	os.Setenv("TEST_BOOL", "true")
 	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_URL", "https://example.com")
 	os.Setenv("TEST_INVALID_INT64", "asdf")
+	os.Setenv("TEST_STRING_SLICE", "foo,bar")
+	os.Setenv("TEST_INT64_SLICE", int64AsString+","+int64AsString)
+	os.Setenv("TEST_UINT16_SLICE", "60000, 50000")
+	os.Setenv("TEST_FLOAT64_SLICE", piAsString+","+piAsString)
+	os.Setenv("TEST_BOOL_SLICE", "true, false, true")
+	os.Setenv("TEST_DURATION_SLICE", "10m, 20m")
+	os.Setenv("TEST_URL_SLICE", "https://example.com")
 
 	var tc testConfig
 	tc.NestedPtr = &nested{}
@@ -113,6 +134,43 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Expected https://example.com, got %s", tc.URL.String())
 	}
 
+	expectedStringSlice := []string{"foo", "bar"}
+	if !reflect.DeepEqual(tc.StringSlice, expectedStringSlice) {
+		t.Fatalf("Expected %s, got %s", expectedStringSlice, tc.StringSlice)
+	}
+
+	expectedInt64Slice := []int64{int64Val, int64Val}
+	if !reflect.DeepEqual(tc.Int64Slice, expectedInt64Slice) {
+		t.Fatalf("Expected %s, got %s", expectedInt64Slice, tc.Int64Slice)
+	}
+
+	expectedUint16Slice := []uint16{60000, 50000}
+	if !reflect.DeepEqual(tc.Uint16Slice, expectedUint16Slice) {
+		t.Fatalf("Expected %s, got %s", expectedUint16Slice, tc.Uint16Slice)
+	}
+
+	expectedFloat64Slice := []float64{math.Pi, math.Pi}
+	if !reflect.DeepEqual(tc.Float64Slice, expectedFloat64Slice) {
+		t.Fatalf("Expected %s, got %s", expectedFloat64Slice, tc.Float64Slice)
+	}
+
+	expectedBoolSlice := []bool{true, false, true}
+	if !reflect.DeepEqual(tc.BoolSlice, expectedBoolSlice) {
+		t.Fatalf("Expected %s, got %s", expectedBoolSlice, tc.BoolSlice)
+	}
+
+	duration2, _ := time.ParseDuration("20m")
+	expectedDurationSlice := []time.Duration{duration, duration2}
+	if !reflect.DeepEqual(tc.DurationSlice, expectedDurationSlice) {
+		t.Fatalf("Expected %s, got %s", expectedDurationSlice, tc.DurationSlice)
+	}
+
+	urlVal, _ := url.Parse("https://example.com")
+	expectedUrlSlice := []*url.URL{urlVal}
+	if !reflect.DeepEqual(tc.URLSlice, expectedUrlSlice) {
+		t.Fatalf("Expected %s, got %s", expectedUrlSlice, tc.URLSlice)
+	}
+
 	if tc.UnsetString != "" {
 		t.Fatal("Got non-empty string unexpectedly")
 	}
@@ -127,6 +185,10 @@ func TestDecode(t *testing.T) {
 
 	if tc.UnsetURL != nil {
 		t.Fatal("Got non-zero *url.URL unexpectedly")
+	}
+
+	if len(tc.UnsetSlice) > 0 {
+		t.Fatal("Got not-empty string slice unexpectedly")
 	}
 
 	if tc.InvalidInt64 != 0 {
@@ -312,6 +374,8 @@ type testConfigExport struct {
 	Duration time.Duration `env:"TEST_DURATION"`
 	URL      *url.URL      `env:"TEST_URL"`
 
+	StringSlice []string `env:"TEST_STRING_SLICE"`
+
 	UnsetString   string        `env:"TEST_UNSET_STRING"`
 	UnsetInt64    int64         `env:"TEST_UNSET_INT64"`
 	UnsetDuration time.Duration `env:"TEST_UNSET_DURATION"`
@@ -373,6 +437,7 @@ func TestExport(t *testing.T) {
 	os.Setenv("TEST_BOOL", "true")
 	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_URL", "https://example.com")
+	os.Setenv("TEST_STRING_SLICE", "foo,bar")
 	os.Setenv("TEST_NESTED_STRING", "nest_foo")
 	os.Setenv("TEST_NESTED_STRING_POINTER", "nest_foo_ptr")
 	os.Setenv("TEST_NESTED_TWICE_STRING", "nest_twice_foo")
@@ -434,6 +499,12 @@ func TestExport(t *testing.T) {
 			Field:   "URL",
 			EnvVar:  "TEST_URL",
 			Value:   "https://example.com",
+			UsesEnv: true,
+		},
+		&ConfigInfo{
+			Field:   "StringSlice",
+			EnvVar:  "TEST_STRING_SLICE",
+			Value:   "[foo bar]",
 			UsesEnv: true,
 		},
 
