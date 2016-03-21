@@ -149,7 +149,7 @@ func decode(target interface{}) (int, error) {
 }
 
 func decodeSlice(f *reflect.Value, env string) {
-	parts := strings.Split(env, ",")
+	parts := strings.Split(env, ";")
 
 	values := parts[:0]
 	for _, x := range parts {

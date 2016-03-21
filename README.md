@@ -45,7 +45,7 @@ err := envdecode.Decode(&cfg)
 ## Supported types ##
 
 * Structs (and pointer to structs)
-* Slices of below defined types
+* Slices of below defined types, separated by semicolon
 * `bool`
 * `float32`, `float64`
 * `int`, `int8`, `int16`, `int32`, `int64`
