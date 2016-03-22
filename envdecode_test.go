@@ -50,6 +50,7 @@ type testConfig struct {
 	NestedPtr *nested
 
 	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
+	DefaultSliceInt []int         `env:"TEST_UNSET,asdf=asdf,default=1;2;3"`
 	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
 	DefaultURL      *url.URL      `env:"TEST_UNSET,default=http://example.com"`
 }
@@ -87,12 +88,12 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_URL", "https://example.com")
 	os.Setenv("TEST_INVALID_INT64", "asdf")
-	os.Setenv("TEST_STRING_SLICE", "foo,bar")
-	os.Setenv("TEST_INT64_SLICE", int64AsString+","+int64AsString)
-	os.Setenv("TEST_UINT16_SLICE", "60000, 50000")
-	os.Setenv("TEST_FLOAT64_SLICE", piAsString+","+piAsString)
-	os.Setenv("TEST_BOOL_SLICE", "true, false, true")
-	os.Setenv("TEST_DURATION_SLICE", "10m, 20m")
+	os.Setenv("TEST_STRING_SLICE", "foo;bar")
+	os.Setenv("TEST_INT64_SLICE", int64AsString+";"+int64AsString)
+	os.Setenv("TEST_UINT16_SLICE", "60000;50000")
+	os.Setenv("TEST_FLOAT64_SLICE", piAsString+";"+piAsString)
+	os.Setenv("TEST_BOOL_SLICE", "true; false; true")
+	os.Setenv("TEST_DURATION_SLICE", "10m; 20m")
 	os.Setenv("TEST_URL_SLICE", "https://example.com")
 
 	var tc testConfig
@@ -217,6 +218,11 @@ func TestDecode(t *testing.T) {
 
 	if tc.DefaultInt != 1234 {
 		t.Fatalf("Expected 1234, got %d", tc.DefaultInt)
+	}
+
+	expectedDefaultSlice := []int{1, 2, 3}
+	if !reflect.DeepEqual(tc.DefaultSliceInt, expectedDefaultSlice) {
+		t.Fatalf("Expected %d, got %d", expectedDefaultSlice, tc.DefaultSliceInt)
 	}
 
 	defaultDuration, _ := time.ParseDuration("24h")
@@ -403,6 +409,7 @@ type testConfigExport struct {
 	DefaultDuration time.Duration `env:"TEST_DEFAULT_DURATION,default=24h"`
 	DefaultURL      *url.URL      `env:"TEST_DEFAULT_URL,default=http://example.com"`
 	DefaultIntSet   int           `env:"TEST_DEFAULT_INT_SET,default=99"`
+	DefaultIntSlice []int         `env:"TEST_DEFAULT_INT_SLICE,default=99;33"`
 }
 
 type nestedConfigExport struct {
@@ -437,12 +444,13 @@ func TestExport(t *testing.T) {
 	os.Setenv("TEST_BOOL", "true")
 	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_URL", "https://example.com")
-	os.Setenv("TEST_STRING_SLICE", "foo,bar")
+	os.Setenv("TEST_STRING_SLICE", "foo;bar")
 	os.Setenv("TEST_NESTED_STRING", "nest_foo")
 	os.Setenv("TEST_NESTED_STRING_POINTER", "nest_foo_ptr")
 	os.Setenv("TEST_NESTED_TWICE_STRING", "nest_twice_foo")
 	os.Setenv("TEST_REQUIRED_INT", "101")
 	os.Setenv("TEST_DEFAULT_INT_SET", "102")
+	os.Setenv("TEST_DEFAULT_INT_SLICE", "1;2;3")
 
 	var tc testConfigExport
 	tc.NestedPtr = &nestedConfigExportPointer{}
@@ -596,6 +604,14 @@ func TestExport(t *testing.T) {
 			EnvVar:       "TEST_DEFAULT_INT_SET",
 			Value:        "102",
 			DefaultValue: "99",
+			HasDefault:   true,
+			UsesEnv:      true,
+		},
+		&ConfigInfo{
+			Field:        "DefaultIntSlice",
+			EnvVar:       "TEST_DEFAULT_INT_SLICE",
+			Value:        "[1 2 3]",
+			DefaultValue: "99;33",
 			HasDefault:   true,
 			UsesEnv:      true,
 		},
