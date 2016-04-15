@@ -1,6 +1,7 @@
 package envdecode
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -49,6 +50,9 @@ type testConfig struct {
 	Nested    nested
 	NestedPtr *nested
 
+	Decoder    decoder  `env:"TEST_DECODER"`
+	DecoderPtr *decoder `env:"TEST_DECODER_PTR"`
+
 	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
 	DefaultSliceInt []int         `env:"TEST_UNSET,asdf=asdf,default=1;2;3"`
 	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
@@ -75,6 +79,14 @@ type testNoTags struct {
 	String string
 }
 
+type decoder struct {
+	String string
+}
+
+func (d *decoder) Decode(env string) error {
+	return json.Unmarshal([]byte(env), &d)
+}
+
 func TestDecode(t *testing.T) {
 	int64Val := int64(-(1 << 50))
 	int64AsString := fmt.Sprintf("%d", int64Val)
@@ -95,9 +107,12 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_BOOL_SLICE", "true; false; true")
 	os.Setenv("TEST_DURATION_SLICE", "10m; 20m")
 	os.Setenv("TEST_URL_SLICE", "https://example.com")
+	os.Setenv("TEST_DECODER", "{\"string\":\"foo\"}")
+	os.Setenv("TEST_DECODER_PTR", "{\"string\":\"foo\"}")
 
 	var tc testConfig
 	tc.NestedPtr = &nested{}
+	tc.DecoderPtr = &decoder{}
 
 	err := Decode(&tc)
 	if err != nil {
@@ -232,6 +247,14 @@ func TestDecode(t *testing.T) {
 
 	if tc.DefaultURL.String() != "http://example.com" {
 		t.Fatalf("Expected http://example.com, got %s", tc.DefaultURL.String())
+	}
+
+	if tc.Decoder.String != "foo" {
+		t.Fatalf("Expected foo, got %s", tc.Decoder.String)
+	}
+
+	if tc.DecoderPtr.String != "foo" {
+		t.Fatalf("Expected foo, got %s", tc.DecoderPtr.String)
 	}
 
 	os.Setenv("TEST_REQUIRED", "required")
