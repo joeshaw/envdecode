@@ -47,7 +47,7 @@ var FailureFunc = func(err error) {
 // recursively.  time.Duration is supported via the
 // time.ParseDuration() function and *url.URL is supported via the
 // url.Parse() function. Slices are supported for all above mentioned
-// primitive types. Comma is used as delimiter in environment variables.
+// primitive types. Semicolon is used as delimiter in environment variables.
 func Decode(target interface{}) error {
 	nFields, err := decode(target)
 	if err != nil {
