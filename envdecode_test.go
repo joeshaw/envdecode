@@ -50,8 +50,10 @@ type testConfig struct {
 	Nested    nested
 	NestedPtr *nested
 
-	Decoder    decoder  `env:"TEST_DECODER"`
-	DecoderPtr *decoder `env:"TEST_DECODER_PTR"`
+	DecoderStruct    decoderStruct  `env:"TEST_DECODER_STRUCT"`
+	DecoderStructPtr *decoderStruct `env:"TEST_DECODER_STRUCT_PTR"`
+
+	DecoderString decoderString `env:"TEST_DECODER_STRING"`
 
 	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
 	DefaultSliceInt []int         `env:"TEST_UNSET,asdf=asdf,default=1;2;3"`
@@ -79,12 +81,25 @@ type testNoTags struct {
 	String string
 }
 
-type decoder struct {
+type decoderStruct struct {
 	String string
 }
 
-func (d *decoder) Decode(env string) error {
+func (d *decoderStruct) Decode(env string) error {
 	return json.Unmarshal([]byte(env), &d)
+}
+
+type decoderString string
+
+func (d *decoderString) Decode(env string) error {
+	r, l := []rune(env), len(env)
+
+	for i := 0; i < l/2; i++ {
+		r[i], r[l-1-i] = r[l-1-i], r[i]
+	}
+
+	*d = decoderString(r)
+	return nil
 }
 
 func TestDecode(t *testing.T) {
@@ -107,12 +122,13 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_BOOL_SLICE", "true; false; true")
 	os.Setenv("TEST_DURATION_SLICE", "10m; 20m")
 	os.Setenv("TEST_URL_SLICE", "https://example.com")
-	os.Setenv("TEST_DECODER", "{\"string\":\"foo\"}")
-	os.Setenv("TEST_DECODER_PTR", "{\"string\":\"foo\"}")
+	os.Setenv("TEST_DECODER_STRUCT", "{\"string\":\"foo\"}")
+	os.Setenv("TEST_DECODER_STRUCT_PTR", "{\"string\":\"foo\"}")
+	os.Setenv("TEST_DECODER_STRING", "oof")
 
 	var tc testConfig
 	tc.NestedPtr = &nested{}
-	tc.DecoderPtr = &decoder{}
+	tc.DecoderStructPtr = &decoderStruct{}
 
 	err := Decode(&tc)
 	if err != nil {
@@ -249,12 +265,16 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Expected http://example.com, got %s", tc.DefaultURL.String())
 	}
 
-	if tc.Decoder.String != "foo" {
-		t.Fatalf("Expected foo, got %s", tc.Decoder.String)
+	if tc.DecoderStruct.String != "foo" {
+		t.Fatalf("Expected foo, got %s", tc.DecoderStruct.String)
 	}
 
-	if tc.DecoderPtr.String != "foo" {
-		t.Fatalf("Expected foo, got %s", tc.DecoderPtr.String)
+	if tc.DecoderStructPtr.String != "foo" {
+		t.Fatalf("Expected foo, got %s", tc.DecoderStructPtr.String)
+	}
+
+	if tc.DecoderString != "foo" {
+		t.Fatalf("Expected foo, got %s", tc.DecoderString)
 	}
 
 	os.Setenv("TEST_REQUIRED", "required")
