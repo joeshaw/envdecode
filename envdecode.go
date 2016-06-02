@@ -29,6 +29,12 @@ var FailureFunc = func(err error) {
 	log.Fatalf("envdecode: an error was encountered while decoding: %v\n", err)
 }
 
+// Decoder is the interface implemented by an object that can decode an
+// environment variable string representation of itself.
+type Decoder interface {
+	Decode(string) error
+}
+
 // Decode environment variables into the provided target.  The target
 // must be a non-nil pointer to a struct.  Fields in the struct must
 // be exported, and tagged with an "env" struct tag with a value
@@ -90,6 +96,11 @@ func decode(target interface{}) (int, error) {
 
 		case reflect.Struct:
 			ss := f.Addr().Interface()
+			_, custom := ss.(Decoder)
+			if custom {
+				break
+			}
+
 			n, err := decode(ss)
 			if err != nil {
 				return 0, err
@@ -138,7 +149,10 @@ func decode(target interface{}) (int, error) {
 
 		setFieldCount++
 
-		if f.Kind() == reflect.Slice {
+		decoder, custom := f.Addr().Interface().(Decoder)
+		if custom {
+			decoder.Decode(env)
+		} else if f.Kind() == reflect.Slice {
 			decodeSlice(&f, env)
 		} else {
 			decodePrimitiveType(&f, env)
