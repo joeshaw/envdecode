@@ -673,3 +673,25 @@ func TestExport(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeCustomGetenv(t *testing.T) {
+	oldFunc := GetenvFunc
+	GetenvFunc = func(k string) string {
+		if k == "TEST_STRING" {
+			return "testing"
+		}
+		return ""
+	}
+
+	var n nested
+	err := Decode(&n)
+	GetenvFunc = oldFunc
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n.String != "testing" {
+		t.Fatalf("Have %s expected 'testing'", n.String)
+	}
+}
