@@ -676,6 +676,9 @@ func TestExport(t *testing.T) {
 
 func TestDecodeCustomGetenv(t *testing.T) {
 	oldFunc := GetenvFunc
+	defer func() {
+		GetenvFunc = oldFunc
+	}()
 	GetenvFunc = func(k string) string {
 		if k == "TEST_STRING" {
 			return "testing"
@@ -685,7 +688,6 @@ func TestDecodeCustomGetenv(t *testing.T) {
 
 	var n nested
 	err := Decode(&n)
-	GetenvFunc = oldFunc
 
 	if err != nil {
 		t.Fatal(err)
