@@ -61,6 +61,10 @@ type testConfig struct {
 	DefaultURL      *url.URL      `env:"TEST_UNSET,default=http://example.com"`
 }
 
+type testConfigNoSet struct {
+	Some string `env:"TEST_THIS_ENV_WILL_NOT_BE_SET"`
+}
+
 type testConfigRequired struct {
 	Required string `env:"TEST_REQUIRED,required"`
 }
@@ -316,13 +320,13 @@ func TestDecodeErrors(t *testing.T) {
 
 	var tnt testNoTags
 	err = Decode(&tnt)
-	if err != ErrInvalidTarget {
+	if err != ErrNoTargetFieldsAreSet {
 		t.Fatal("Should have gotten an error decoding a struct with no tags")
 	}
 
 	var tcni testNoExportedFields
 	err = Decode(&tcni)
-	if err != ErrInvalidTarget {
+	if err != ErrNoTargetFieldsAreSet {
 		t.Fatal("Should have gotten an error decoding a struct with no unexported fields")
 	}
 
@@ -331,6 +335,12 @@ func TestDecodeErrors(t *testing.T) {
 	err = Decode(&tcr)
 	if err == nil {
 		t.Fatal("An error was expected but recieved:", err)
+	}
+
+	var tcns testConfigNoSet
+	err = Decode(&tcns)
+	if err != ErrNoTargetFieldsAreSet {
+		t.Fatal("Should have gotten an error decoding when no env variables are set")
 	}
 
 	missing := false
@@ -378,7 +388,7 @@ func TestOnlyNested(t *testing.T) {
 	var o3 struct {
 		Inner noConfig
 	}
-	if err := Decode(&o3); err != ErrInvalidTarget {
+	if err := Decode(&o3); err != ErrNoTargetFieldsAreSet {
 		t.Fatal("Expected ErrInvalidTarget, got %s", err)
 	}
 }

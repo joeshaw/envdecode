@@ -18,6 +18,7 @@ import (
 // ErrInvalidTarget indicates that the target value passed to
 // Decode is invalid.  Target must be a non-nil pointer to a struct.
 var ErrInvalidTarget = errors.New("target must be non-nil pointer to struct that has at least one exported field with a valid env tag.")
+var ErrNoTargetFieldsAreSet = errors.New("none of the target fields were set from environment variables")
 
 // FailureFunc is called when an error is encountered during a MustDecode
 // operation. It prints the error and terminates the process.
@@ -65,7 +66,7 @@ func Decode(target interface{}) error {
 	// if we didn't do anything - the user probably did something
 	// wrong like leave all fields unexported.
 	if nFields == 0 {
-		return ErrInvalidTarget
+		return ErrNoTargetFieldsAreSet
 	}
 
 	return nil
