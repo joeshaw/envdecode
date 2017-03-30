@@ -475,6 +475,57 @@ type nestedConfigInner struct {
 	String string `env:"TEST_NESTED_TWICE_STRING"`
 }
 
+type testConfigStrict struct {
+	InvalidInt64Strict   int64 `env:"TEST_INVALID_INT64,strict,default=1"`
+	InvalidInt64Implicit int64 `env:"TEST_INVALID_INT64_IMPLICIT,default=1"`
+
+	Nested struct {
+		InvalidInt64Strict   int64 `env:"TEST_INVALID_INT64_NESTED,strict,required"`
+		InvalidInt64Implicit int64 `env:"TEST_INVALID_INT64_NESTED_IMPLICIT,required"`
+	}
+}
+
+func TestInvalidStrict(t *testing.T) {
+	cases := []struct {
+		decoder             func(interface{}) error
+		rootValue           string
+		nestedValue         string
+		rootValueImplicit   string
+		nestedValueImplicit string
+		pass                bool
+	}{
+		{Decode, "1", "1", "1", "1", true},
+		{Decode, "1", "1", "1", "asdf", true},
+		{Decode, "1", "1", "asdf", "1", true},
+		{Decode, "1", "1", "asdf", "asdf", true},
+		{Decode, "1", "asdf", "1", "1", false},
+		{Decode, "asdf", "1", "1", "1", false},
+		{Decode, "asdf", "asdf", "1", "1", false},
+		{StrictDecode, "1", "1", "1", "1", true},
+		{StrictDecode, "asdf", "1", "1", "1", false},
+		{StrictDecode, "1", "asdf", "1", "1", false},
+		{StrictDecode, "1", "1", "asdf", "1", false},
+		{StrictDecode, "1", "1", "1", "asdf", false},
+		{StrictDecode, "asdf", "asdf", "1", "1", false},
+		{StrictDecode, "1", "asdf", "asdf", "1", false},
+		{StrictDecode, "1", "1", "asdf", "asdf", false},
+		{StrictDecode, "1", "asdf", "asdf", "asdf", false},
+		{StrictDecode, "asdf", "asdf", "asdf", "asdf", false},
+	}
+
+	for _, test := range cases {
+		os.Setenv("TEST_INVALID_INT64", test.rootValue)
+		os.Setenv("TEST_INVALID_INT64_NESTED", test.nestedValue)
+		os.Setenv("TEST_INVALID_INT64_IMPLICIT", test.rootValueImplicit)
+		os.Setenv("TEST_INVALID_INT64_NESTED_IMPLICIT", test.nestedValueImplicit)
+
+		var tc testConfigStrict
+		if err := test.decoder(&tc); test.pass != (err == nil) {
+			t.Fatalf("Have err=%s wanted pass=%v", err, test.pass)
+		}
+	}
+}
+
 func TestExport(t *testing.T) {
 	testFloat64 := fmt.Sprintf("%.48f", math.Pi)
 	testFloat64Output := strconv.FormatFloat(math.Pi, 'f', -1, 64)
@@ -572,7 +623,7 @@ func TestExport(t *testing.T) {
 		&ConfigInfo{
 			Field:  "UnsetDuration",
 			EnvVar: "TEST_UNSET_DURATION",
-			Value:  "0",
+			Value:  "0s",
 		},
 		&ConfigInfo{
 			Field:  "UnsetURL",
