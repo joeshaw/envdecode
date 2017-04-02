@@ -35,6 +35,10 @@ type Decoder interface {
 	Decode(string) error
 }
 
+var GetenvFunc = func(key string) string {
+	return os.Getenv(key)
+}
+
 // Decode environment variables into the provided target.  The target
 // must be a non-nil pointer to a struct.  Fields in the struct must
 // be exported, and tagged with an "env" struct tag with a value
@@ -140,7 +144,7 @@ func decode(target interface{}, strict bool) (int, error) {
 		}
 
 		parts := strings.Split(tag, ",")
-		env := os.Getenv(parts[0])
+		env := GetenvFunc(parts[0])
 
 		required := false
 		hasDefault := false
@@ -355,7 +359,7 @@ func Export(target interface{}) ([]*ConfigInfo, error) {
 		ci := &ConfigInfo{
 			Field:   fName,
 			EnvVar:  parts[0],
-			UsesEnv: os.Getenv(parts[0]) != "",
+			UsesEnv: GetenvFunc(parts[0]) != "",
 		}
 
 		for _, o := range parts[1:] {
