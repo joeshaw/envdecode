@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -59,6 +60,8 @@ type testConfig struct {
 	DefaultSliceInt []int         `env:"TEST_UNSET,asdf=asdf,default=1;2;3"`
 	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
 	DefaultURL      *url.URL      `env:"TEST_UNSET,default=http://example.com"`
+
+	cantInterfaceField sync.Mutex
 }
 
 type testConfigNoSet struct {
