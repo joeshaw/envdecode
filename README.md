@@ -1,4 +1,4 @@
-# envdecode #
+# envdecode [![Travis-CI](https://travis-ci.org/joeshaw/envdecode.svg)](https://travis-ci.org/joeshaw/envdecode) [![GoDoc](https://godoc.org/github.com/joeshaw/envdecode?status.svg)](https://godoc.org/github.com/joeshaw/envdecode)
 
 `envdecode` is a Go package for populating structs from environment
 variables.
@@ -8,10 +8,10 @@ allowing you you use any names you want for environment variables.
 `envdecode` will recurse into nested structs, including pointers to
 nested structs, but it will not allocate new pointers to structs.
 
-## API ##
+## API
 
 Full API docs are available on
-[godoc.org](http://godoc.org/github.com/joeshaw/envdecode).
+[godoc.org](https://godoc.org/github.com/joeshaw/envdecode).
 
 Define a struct with `env` struct tags:
 
@@ -51,7 +51,7 @@ err := envdecode.StrictDecode(&cfg)
 
 All parse errors will fail fast and return an error in this mode.
 
-## Supported types ##
+## Supported types
 
 * Structs (and pointer to structs)
 * Slices of below defined types, separated by semicolon
