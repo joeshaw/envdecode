@@ -57,8 +57,9 @@ type Decoder interface {
 // time.ParseDuration() function and *url.URL is supported via the
 // url.Parse() function. Slices are supported for all above mentioned
 // primitive types. Semicolon is used as delimiter in environment variables.
-func Decode(target interface{}) error {
-	nFields, err := decode(target, false)
+func Decode(target interface{}, options ...Option) error {
+	cfg := newConfig(options...)
+	nFields, err := decode(target, cfg)
 	if err != nil {
 		return err
 	}
@@ -74,8 +75,10 @@ func Decode(target interface{}) error {
 
 // StrictDecode is similar to Decode except all fields will have an implicit
 // ",strict" on all fields.
-func StrictDecode(target interface{}) error {
-	nFields, err := decode(target, true)
+func StrictDecode(target interface{}, options ...Option) error {
+	options = append(options, WithStrictDecoding())
+	cfg := newConfig(options...)
+	nFields, err := decode(target, cfg)
 	if err != nil {
 		return err
 	}
@@ -89,7 +92,7 @@ func StrictDecode(target interface{}) error {
 	return nil
 }
 
-func decode(target interface{}, strict bool) (int, error) {
+func decode(target interface{}, cfg config) (int, error) {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {
 		return 0, ErrInvalidTarget
@@ -104,7 +107,7 @@ func decode(target interface{}, strict bool) (int, error) {
 	setFieldCount := 0
 	for i := 0; i < s.NumField(); i++ {
 		// Localize the umbrella `strict` value to the specific field.
-		strict := strict
+		strict := cfg.strict
 
 		f := s.Field(i)
 
@@ -128,7 +131,7 @@ func decode(target interface{}, strict bool) (int, error) {
 				break
 			}
 
-			n, err := decode(ss, strict)
+			n, err := decode(ss, cfg)
 			if err != nil {
 				return 0, err
 			}
@@ -147,7 +150,7 @@ func decode(target interface{}, strict bool) (int, error) {
 		parts := strings.Split(tag, ",")
 		env := os.Getenv(parts[0])
 
-		required := false
+		required := cfg.require
 		hasDefault := false
 		defaultValue := ""
 
@@ -162,6 +165,11 @@ func decode(target interface{}, strict bool) (int, error) {
 			if !strict {
 				strict = strings.HasPrefix(o, "strict")
 			}
+		}
+
+		if cfg.nodefaults {
+			hasDefault = false
+			defaultValue = ""
 		}
 
 		if required && hasDefault {
