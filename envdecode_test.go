@@ -56,6 +56,8 @@ type testConfig struct {
 
 	DecoderString decoderString `env:"TEST_DECODER_STRING"`
 
+	UnmarshalerNumber unmarshalerNumber `env:"TEST_UNMARSHALER_NUMBER"`
+
 	DefaultInt      int           `env:"TEST_UNSET,asdf=asdf,default=1234"`
 	DefaultSliceInt []int         `env:"TEST_UNSET,asdf=asdf,default=1;2;3"`
 	DefaultDuration time.Duration `env:"TEST_UNSET,asdf=asdf,default=24h"`
@@ -109,6 +111,17 @@ func (d *decoderString) Decode(env string) error {
 	return nil
 }
 
+type unmarshalerNumber uint8
+
+func (o *unmarshalerNumber) UnmarshalText(raw []byte) error {
+	n, err := strconv.ParseUint(string(raw), 8, 8) // parse text as octal number
+	if err != nil {
+		return err
+	}
+	*o = unmarshalerNumber(n)
+	return nil
+}
+
 func TestDecode(t *testing.T) {
 	int64Val := int64(-(1 << 50))
 	int64AsString := fmt.Sprintf("%d", int64Val)
@@ -132,6 +145,7 @@ func TestDecode(t *testing.T) {
 	os.Setenv("TEST_DECODER_STRUCT", "{\"string\":\"foo\"}")
 	os.Setenv("TEST_DECODER_STRUCT_PTR", "{\"string\":\"foo\"}")
 	os.Setenv("TEST_DECODER_STRING", "oof")
+	os.Setenv("TEST_UNMARSHALER_NUMBER", "07")
 
 	var tc testConfig
 	tc.NestedPtr = &nested{}
@@ -282,6 +296,10 @@ func TestDecode(t *testing.T) {
 
 	if tc.DecoderString != "foo" {
 		t.Fatalf("Expected foo, got %s", tc.DecoderString)
+	}
+
+	if tc.UnmarshalerNumber != 07 {
+		t.Fatalf("Expected 07, got %04o", tc.UnmarshalerNumber)
 	}
 
 	os.Setenv("TEST_REQUIRED", "required")
