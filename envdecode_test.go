@@ -74,6 +74,14 @@ type testConfigRequired struct {
 	Required string `env:"TEST_REQUIRED,required"`
 }
 
+type testConfigForcedRequire struct {
+	NotRequired string `env:"TEST_NOTREQUIRED"`
+}
+
+type testConfigDisabledDefault struct {
+	Default string `env:"TEST_DISABLED_DEFAULT,default=test"`
+}
+
 type testConfigRequiredDefault struct {
 	RequiredDefault string `env:"TEST_REQUIRED_DEFAULT,required,default=test"`
 }
@@ -518,7 +526,7 @@ type testConfigStrict struct {
 
 func TestInvalidStrict(t *testing.T) {
 	cases := []struct {
-		decoder             func(interface{}) error
+		decoder             func(interface{}, ...Option) error
 		rootValue           string
 		nestedValue         string
 		rootValueImplicit   string
@@ -753,5 +761,32 @@ func TestExport(t *testing.T) {
 		if *ci != *v {
 			t.Fatalf("have %+v, expected %+v", v, ci)
 		}
+	}
+}
+
+func TestForcedRequirements(t *testing.T) {
+	os.Setenv("TEST_NOTREQUIRED", "notrequired")
+	var tc testConfigForcedRequire
+	if err := Decode(&tc); err != nil {
+		t.Fatal(err)
+	}
+	if tc.NotRequired != "notrequired" {
+		t.Fatalf("Expected \"notrequired\", got %s", tc.NotRequired)
+	}
+
+	os.Clearenv()
+	if err := Decode(&tc, WithForcedRequirement()); err == ErrNoTargetFieldsAreSet {
+		t.Fatal("An error was expected but recieved:", err)
+	}
+}
+
+func TestDisabledRequirements(t *testing.T) {
+	os.Clearenv()
+	var tc testConfigDisabledDefault
+	if err := Decode(&tc, WithoutDefaults()); err != ErrNoTargetFieldsAreSet {
+		t.Fatal(err)
+	}
+	if tc.Default != "" {
+		t.Fatalf("Expected \"\", got %s", tc.Default)
 	}
 }
