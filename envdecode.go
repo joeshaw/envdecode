@@ -59,7 +59,7 @@ type Decoder interface {
 // url.Parse() function. Slices are supported for all above mentioned
 // primitive types. Semicolon is used as delimiter in environment variables.
 func Decode(target interface{}, args ...interface{}) error {
-	nFields, err := decode(target, false, args)
+	nFields, err := decode(target, false, args...)
 	if err != nil {
 		return err
 	}
@@ -75,8 +75,8 @@ func Decode(target interface{}, args ...interface{}) error {
 
 // StrictDecode is similar to Decode except all fields will have an implicit
 // ",strict" on all fields.
-func StrictDecode(target interface{}) error {
-	nFields, err := decode(target, true)
+func StrictDecode(target interface{}, args ...interface{}) error {
+	nFields, err := decode(target, true, args...)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func decode(target interface{}, strict bool, args ...interface{}) (int, error) {
 				break
 			}
 
-			n, err := decode(ss, strict)
+			n, err := decode(ss, strict, args...)
 			if err != nil {
 				return 0, err
 			}
