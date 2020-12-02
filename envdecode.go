@@ -58,8 +58,8 @@ type Decoder interface {
 // time.ParseDuration() function and *url.URL is supported via the
 // url.Parse() function. Slices are supported for all above mentioned
 // primitive types. Semicolon is used as delimiter in environment variables.
-func Decode(target interface{}) error {
-	nFields, err := decode(target, false)
+func Decode(target interface{}, args ...interface{}) error {
+	nFields, err := decode(target, false, args...)
 	if err != nil {
 		return err
 	}
@@ -75,8 +75,8 @@ func Decode(target interface{}) error {
 
 // StrictDecode is similar to Decode except all fields will have an implicit
 // ",strict" on all fields.
-func StrictDecode(target interface{}) error {
-	nFields, err := decode(target, true)
+func StrictDecode(target interface{}, args ...interface{}) error {
+	nFields, err := decode(target, true, args...)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func StrictDecode(target interface{}) error {
 	return nil
 }
 
-func decode(target interface{}, strict bool) (int, error) {
+func decode(target interface{}, strict bool, args ...interface{}) (int, error) {
 	s := reflect.ValueOf(target)
 	if s.Kind() != reflect.Ptr || s.IsNil() {
 		return 0, ErrInvalidTarget
@@ -129,7 +129,7 @@ func decode(target interface{}, strict bool) (int, error) {
 				break
 			}
 
-			n, err := decode(ss, strict)
+			n, err := decode(ss, strict, args...)
 			if err != nil {
 				return 0, err
 			}
@@ -144,6 +144,8 @@ func decode(target interface{}, strict bool) (int, error) {
 		if tag == "" {
 			continue
 		}
+
+		tag = fmt.Sprintf(tag, args...)
 
 		parts := strings.Split(tag, ",")
 		env := os.Getenv(parts[0])
