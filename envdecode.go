@@ -145,7 +145,7 @@ func decode(target interface{}, strict bool, args ...interface{}) (int, error) {
 			continue
 		}
 
-		tag = fmt.Sprintf(tag, args)
+		tag = fmt.Sprintf(tag, args...)
 
 		parts := strings.Split(tag, ",")
 		env := os.Getenv(parts[0])
