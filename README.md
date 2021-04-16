@@ -18,7 +18,7 @@ Define a struct with `env` struct tags:
 ```go
 type Config struct {
     Hostname  string `env:"SERVER_HOSTNAME,default=localhost"`
-    Port      uint16 `env:"SERVER_PORT,default=8080"`
+    Port      uint16 `env:"HTTP_PORT;SERVER_PORT,default=8080"`
 
     AWS struct {
         ID        string   `env:"AWS_ACCESS_KEY_ID"`
@@ -30,8 +30,8 @@ type Config struct {
 }
 ```
 
-Fields *must be exported* (i.e. begin with a capital letter) in order
-for `envdecode` to work with them.  An error will be returned if a
+Fields _must be exported_ (i.e. begin with a capital letter) in order
+for `envdecode` to work with them. An error will be returned if a
 struct with no exported fields is decoded (including one that contains
 no `env` tags at all).
 Default values may be provided by appending ",default=value" to the
@@ -57,16 +57,16 @@ All parse errors will fail fast and return an error in this mode.
 
 ## Supported types
 
-* Structs (and pointer to structs)
-* Slices of below defined types, separated by semicolon
-* `bool`
-* `float32`, `float64`
-* `int`, `int8`, `int16`, `int32`, `int64`
-* `uint`, `uint8`, `uint16`, `uint32`, `uint64`
-* `string`
-* `time.Duration`, using the [`time.ParseDuration()` format](http://golang.org/pkg/time/#ParseDuration)
-* `*url.URL`, using [`url.Parse()`](https://godoc.org/net/url#Parse)
-* Types those implement a `Decoder` interface
+- Structs (and pointer to structs)
+- Slices of below defined types, separated by semicolon
+- `bool`
+- `float32`, `float64`
+- `int`, `int8`, `int16`, `int32`, `int64`
+- `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+- `string`
+- `time.Duration`, using the [`time.ParseDuration()` format](http://golang.org/pkg/time/#ParseDuration)
+- `*url.URL`, using [`url.Parse()`](https://godoc.org/net/url#Parse)
+- Types those implement a `Decoder` interface
 
 ## Custom `Decoder`
 

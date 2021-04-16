@@ -146,7 +146,15 @@ func decode(target interface{}, strict bool) (int, error) {
 		}
 
 		parts := strings.Split(tag, ",")
-		env := os.Getenv(parts[0])
+		overrides := strings.Split(parts[0], `;`)
+
+		var env string
+		for _, override := range overrides {
+			v := os.Getenv(override)
+			if v != "" {
+				env = v
+			}
+		}
 
 		required := false
 		hasDefault := false
