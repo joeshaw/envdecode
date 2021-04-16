@@ -78,6 +78,10 @@ type testConfigRequiredDefault struct {
 	RequiredDefault string `env:"TEST_REQUIRED_DEFAULT,required,default=test"`
 }
 
+type testConfigOverride struct {
+	OverrideString string `env:"TEST_OVERRIDE_A;TEST_OVERRIDE_B,default=override_default"`
+}
+
 type testNoExportedFields struct {
 	aString  string  `env:"TEST_STRING"`
 	anInt64  int64   `env:"TEST_INT64"`
@@ -317,6 +321,40 @@ func TestDecode(t *testing.T) {
 	_, err = Export(&tcr)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	var tco testConfigOverride
+	err = Decode(&tco)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tco.OverrideString != "override_default" {
+		t.Fatalf(`Expected "override_default" but got %s`, tco.OverrideString)
+	}
+
+	os.Setenv("TEST_OVERRIDE_A", "override_a")
+
+	tco = testConfigOverride{}
+	err = Decode(&tco)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tco.OverrideString != "override_a" {
+		t.Fatalf(`Expected "override_a" but got %s`, tco.OverrideString)
+	}
+
+	os.Setenv("TEST_OVERRIDE_B", "override_b")
+
+	tco = testConfigOverride{}
+	err = Decode(&tco)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tco.OverrideString != "override_b" {
+		t.Fatalf(`Expected "override_b" but got %s`, tco.OverrideString)
 	}
 }
 
